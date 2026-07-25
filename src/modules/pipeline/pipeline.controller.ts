@@ -24,10 +24,17 @@ export class PipelineController {
     });
   }
 
+  /**
+   * Kicks off a full pipeline run and returns immediately (the run row is
+   * created synchronously with status "running") - it does not wait for
+   * completion. Real RSS feed volume routinely produces hundreds of
+   * clusters to score/summarize in a single run, so blocking an HTTP
+   * request on that isn't practical. Poll GET /pipeline/latest for progress.
+   */
   @Post('run')
   @HttpCode(202)
   async trigger(): Promise<PipelineRunResponseDto> {
-    const run = await this.pipelineService.runFullPipeline();
+    const run = await this.pipelineService.startInBackground();
     return plainToInstance(PipelineRunResponseDto, run, {
       excludeExtraneousValues: true,
     });

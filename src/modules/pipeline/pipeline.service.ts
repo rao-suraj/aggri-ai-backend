@@ -29,11 +29,17 @@ export class PipelineService {
   ) {}
 
   /**
-   * Runs the full daily flow end to end:
+   * Runs the full daily flow end to end, awaiting completion:
    * Ingestion -> Clustering -> Scoring -> Ranking -> Summarization.
    * Any stage may throw; the run is recorded as "failed" with the error
    * message rather than left half-written, so /pipeline/latest always
    * reflects an honest status for the frontend's PIPELINE OK/DOWN indicator.
+   *
+   * This is what the daily cron job calls (a scheduled job has nowhere to
+   * "respond" to, so blocking until done is correct there). For the manual
+   * HTTP trigger, see `startInBackground` below - awaiting the entire run
+   * over HTTP isn't practical once a day's real RSS volume produces
+   * hundreds of clusters to score.
    */
   async runFullPipeline(
     date: string = todayDateString(),
@@ -46,6 +52,35 @@ export class PipelineService {
       }),
     );
 
+    await this.executePipeline(run, date);
+    return this.pipelineRunRepository.findOneByOrFail({ id: run.id });
+  }
+
+  /**
+   * Creates the PipelineRun row synchronously (so callers get an id/status
+   * back immediately) and kicks off the actual work without awaiting it.
+   * Used by `POST /pipeline/run`, which responds 202 Accepted right away;
+   * poll `GET /pipeline/latest` for progress/completion.
+   */
+  async startInBackground(
+    date: string = todayDateString(),
+  ): Promise<PipelineRun> {
+    const run = await this.pipelineRunRepository.save(
+      this.pipelineRunRepository.create({
+        date,
+        startedAt: new Date(),
+        status: 'running',
+      }),
+    );
+
+    // executePipeline already records failures onto the run row itself;
+    // swallow the rejection here so an unawaited background run doesn't
+    // surface as an unhandled promise rejection.
+    void this.executePipeline(run, date).catch(() => undefined);
+    return run;
+  }
+
+  private async executePipeline(run: PipelineRun, date: string): Promise<void> {
     try {
       const ingestion = await this.ingestionService.ingestAll();
       const clustering = await this.clusteringService.clusterPendingArticles();
@@ -55,6 +90,8 @@ export class PipelineService {
         await this.summarizationService.summarizeForDate(date);
 
       const allSources = await this.sourcesService.findAll();
+      const clustersTotal =
+        await this.clusteringService.countClustersForDate(date);
 
       await this.pipelineRunRepository.update(run.id, {
         finishedAt: new Date(),
@@ -62,10 +99,7 @@ export class PipelineService {
         sourcesTotal: allSources.length,
         sourcesOk: ingestion.sourcesOk,
         articlesIngested: ingestion.articlesInserted,
-        clustersTotal:
-          clustering.newClusters + clustering.joinedExisting > 0
-            ? clustering.newClusters + clustering.joinedExisting
-            : scoring.scored + scoring.failed,
+        clustersTotal,
         clustersScored: scoring.scored,
         storiesRanked: ranking.ranked,
         geminiCalls: scoring.scored,
@@ -73,7 +107,8 @@ export class PipelineService {
       });
 
       this.logger.log(
-        `Pipeline run ${run.id} for ${date} completed: ${ranking.ranked} stories ranked`,
+        `Pipeline run ${run.id} for ${date} completed: ${ranking.ranked} stories ranked ` +
+          `(${clustering.processed} articles clustered, ${scoring.scored}/${scoring.scored + scoring.failed} scored)`,
       );
     } catch (error) {
       await this.pipelineRunRepository.update(run.id, {
@@ -86,8 +121,6 @@ export class PipelineService {
       );
       throw error;
     }
-
-    return this.pipelineRunRepository.findOneByOrFail({ id: run.id });
   }
 
   async getLatestRun(): Promise<PipelineRun | null> {

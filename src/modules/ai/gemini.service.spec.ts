@@ -21,7 +21,7 @@ describe('GeminiService', () => {
           useValue: {
             get: () => ({
               apiKey: 'test-key',
-              model: 'gemini-2.5-flash',
+              model: 'gemini-flash-latest',
               baseUrl: 'https://gemini.example.com',
             }),
           },

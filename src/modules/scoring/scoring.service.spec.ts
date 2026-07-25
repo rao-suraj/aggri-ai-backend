@@ -60,7 +60,9 @@ describe('ScoringService', () => {
         { provide: GeminiService, useValue: geminiService },
         {
           provide: ConfigService,
-          useValue: { get: () => ({ corroborationCap: 5 }) },
+          useValue: {
+            get: () => ({ corroborationCap: 5, scoringConcurrency: 10 }),
+          },
         },
       ],
     }).compile();

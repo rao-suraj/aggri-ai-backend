@@ -17,8 +17,9 @@ was built against.
 
 - NestJS 11 + TypeORM 0.3 (`mssql` driver)
 - SQL Server (via Docker for local dev)
-- Gemini 2.5 Flash - Phase 3 AI sanity-check (sensationalism / missing
-  attribution / contradiction flags)
+- Gemini (`gemini-flash-latest` alias, currently resolves to `gemini-3.6-flash`)
+  - Phase 3 AI sanity-check (sensationalism / missing attribution /
+    contradiction flags)
 - Groq (Llama 3.3 70B) - Phase 4 summarization
 - `@nestjs/schedule` for cron jobs (no separate queue infra)
 - `rss-parser` for feed ingestion, `stopword` for keyword extraction
@@ -88,14 +89,41 @@ cron-expressions driven by config (`INGESTION_CRON`, `PIPELINE_CRON`):
   feeds-live ratio, and last-run time without knowing anything about the
   pipeline internals.
 
-You can also trigger a full run manually:
+You can also trigger a full run manually. This returns immediately (202,
+run status `running`) rather than blocking until the whole pipeline
+finishes - poll `/pipeline/latest` for progress/completion:
 
 ```bash
 curl -X POST http://localhost:3000/pipeline/run
+curl http://localhost:3000/pipeline/latest
 ```
+
+Scoring and summarization run with bounded concurrency
+(`SCORING_CONCURRENCY`, default 10; `SUMMARIZATION_CONCURRENCY`, default 5)
+rather than one Gemini/Groq call at a time - real RSS feed volume across a
+dozen sources routinely produces 200-700+ clusters/day (far more than a
+handful), and a sequential loop of that many AI calls would take 20+
+minutes. With concurrency 10, a ~280-cluster run completes in well under a
+minute.
 
 ### Design notes / deviations from the plan doc worth knowing about
 
+- **Gemini model name**: the plan doc specifies "Gemini 2.5 Flash". As of
+  this writing, calling `models/gemini-2.5-flash:generateContent` with a
+  freshly created API key returns `404 "This model ... is no longer
+  available to new users"`, even though it still appears in `GET /models`.
+  `GEMINI_MODEL` defaults to `gemini-flash-lite-latest` instead - a
+  Google-managed alias for the current recommended lightweight flash model
+  (resolved to `gemini-3.5-flash-lite` at time of testing). This was picked
+  over the plain `gemini-flash-latest` alias (`gemini-3.6-flash`)
+  specifically because the "flash" tier now does agentic-style internal
+  "thinking" by default - fine for judgment-heavy work, but pure overhead
+  for this step's simple 3-field boolean classification (300+ extra
+  "thinking tokens" and multiple extra seconds of latency per call in
+  testing, with no difference in output quality for this task). The
+  lite/no-thinking variant scored a real 278-cluster day's worth of
+  clusters in well under a minute with a 100% success rate. Override
+  `GEMINI_MODEL` in your env file if you need a pinned version.
 - **RSS sources**: Reuters, AP, PTI and ANI (named as examples in the PRD)
   no longer publish free public RSS feeds. `src/database/seeds/sources.seed.ts`
   substitutes comparable, verified-working free feeds (BBC, Al Jazeera, DW,

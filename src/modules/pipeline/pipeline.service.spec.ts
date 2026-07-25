@@ -19,7 +19,10 @@ describe('PipelineService', () => {
     findOne: jest.Mock;
   };
   let ingestionService: { ingestAll: jest.Mock };
-  let clusteringService: { clusterPendingArticles: jest.Mock };
+  let clusteringService: {
+    clusterPendingArticles: jest.Mock;
+    countClustersForDate: jest.Mock;
+  };
   let scoringService: { scoreClustersForDate: jest.Mock };
   let rankingService: { rankForDate: jest.Mock };
   let summarizationService: { summarizeForDate: jest.Mock };
@@ -51,6 +54,7 @@ describe('PipelineService', () => {
         newClusters: 40,
         joinedExisting: 40,
       }),
+      countClustersForDate: jest.fn().mockResolvedValue(40),
     };
     scoringService = {
       scoreClustersForDate: jest
@@ -100,9 +104,16 @@ describe('PipelineService', () => {
       '2026-07-25',
     );
 
+    expect(clusteringService.countClustersForDate).toHaveBeenCalledWith(
+      '2026-07-25',
+    );
     expect(runRepo.update).toHaveBeenCalledWith(
       1,
-      expect.objectContaining({ status: 'success', storiesRanked: 20 }),
+      expect.objectContaining({
+        status: 'success',
+        storiesRanked: 20,
+        clustersTotal: 40, // distinct clusters, NOT newClusters+joinedExisting (which is 80 articles processed)
+      }),
     );
   });
 
@@ -122,6 +133,49 @@ describe('PipelineService', () => {
         errorMessage: 'scoring exploded',
       }),
     );
+  });
+
+  it('startInBackground creates the run row and returns immediately without waiting for completion', async () => {
+    // Make the pipeline hang so we can prove startInBackground didn't await it.
+    let resolveIngestion: () => void = () => undefined;
+    ingestionService.ingestAll.mockReturnValue(
+      new Promise((resolve) => {
+        resolveIngestion = () =>
+          resolve({
+            sourcesTotal: 13,
+            sourcesOk: 13,
+            sourcesFailed: 0,
+            articlesFetched: 100,
+            articlesInserted: 80,
+            articlesSkipped: 20,
+          });
+      }),
+    );
+
+    const run = await service.startInBackground('2026-07-25');
+
+    expect(run).toMatchObject({ id: 1, status: 'running' });
+    // The background work hasn't resolved yet - update() shouldn't have
+    // been called with a final status.
+    expect(runRepo.update).not.toHaveBeenCalled();
+
+    resolveIngestion();
+    // let the still-running background promise chain flush
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+  });
+
+  it('startInBackground does not throw even if the background run fails', async () => {
+    scoringService.scoreClustersForDate.mockRejectedValue(new Error('boom'));
+
+    await expect(
+      service.startInBackground('2026-07-25'),
+    ).resolves.toMatchObject({
+      status: 'running',
+    });
+
+    // allow the detached background promise to settle before the test ends
+    await new Promise((resolve) => setImmediate(resolve));
   });
 
   it('getLatestRun returns the most recently started run', async () => {

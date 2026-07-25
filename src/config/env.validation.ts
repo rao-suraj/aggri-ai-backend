@@ -26,7 +26,7 @@ export const envValidationSchema = Joi.object({
 
   // AI providers - required, no fallback/mock mode allowed
   GEMINI_API_KEY: Joi.string().required(),
-  GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: Joi.string().default('gemini-flash-lite-latest'),
   GEMINI_API_BASE_URL: Joi.string().default(
     'https://generativelanguage.googleapis.com/v1beta',
   ),
@@ -42,4 +42,6 @@ export const envValidationSchema = Joi.object({
   CLUSTER_SIMILARITY_THRESHOLD: Joi.number().min(0).max(1).default(0.4),
   RANKING_TOP_N: Joi.number().default(20),
   CORROBORATION_CAP: Joi.number().default(5),
+  SCORING_CONCURRENCY: Joi.number().default(10),
+  SUMMARIZATION_CONCURRENCY: Joi.number().default(5),
 });

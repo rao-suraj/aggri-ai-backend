@@ -7,6 +7,7 @@ import {
   SOURCE_TIER_WEIGHT,
   SourceTier,
 } from '../../common/enums/source-tier.enum';
+import { mapWithConcurrency } from '../../common/util/concurrency.util';
 import { AiSanityFlags, ClusterArticle, StoryCluster } from '../../entities';
 import { GeminiService } from '../ai/gemini.service';
 
@@ -33,14 +34,19 @@ export class ScoringService {
 
   async scoreClustersForDate(date: string): Promise<ScoringResult> {
     const clusters = await this.clusterRepository.find({ where: { date } });
-    const { corroborationCap } = this.configService.get('pipeline', {
-      infer: true,
-    });
+    const { corroborationCap, scoringConcurrency } = this.configService.get(
+      'pipeline',
+      { infer: true },
+    );
 
     let scored = 0;
     let failed = 0;
 
-    for (const cluster of clusters) {
+    // Real RSS feed volume routinely produces hundreds of clusters/day -
+    // far more than a sequential loop of Gemini calls can get through in a
+    // reasonable time, so these run with bounded concurrency instead of
+    // one at a time (see mapWithConcurrency for why).
+    await mapWithConcurrency(clusters, scoringConcurrency, async (cluster) => {
       try {
         await this.scoreCluster(cluster, corroborationCap);
         scored += 1;
@@ -54,7 +60,7 @@ export class ScoringService {
         // Continue scoring the rest of the day's clusters rather than
         // aborting the whole batch on one failure.
       }
-    }
+    });
 
     return { scored, failed };
   }

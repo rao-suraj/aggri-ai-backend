@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ClusterArticle, DailyRanking } from '../../entities';
@@ -33,6 +34,10 @@ describe('SummarizationService', () => {
           useValue: clusterArticleRepo,
         },
         { provide: GroqService, useValue: groqService },
+        {
+          provide: ConfigService,
+          useValue: { get: () => ({ summarizationConcurrency: 5 }) },
+        },
       ],
     }).compile();
 

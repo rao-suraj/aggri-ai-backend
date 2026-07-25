@@ -5,10 +5,10 @@ import { PipelineService } from './pipeline.service';
 
 describe('PipelineController', () => {
   let controller: PipelineController;
-  let service: { getLatestRun: jest.Mock; runFullPipeline: jest.Mock };
+  let service: { getLatestRun: jest.Mock; startInBackground: jest.Mock };
 
   beforeEach(async () => {
-    service = { getLatestRun: jest.fn(), runFullPipeline: jest.fn() };
+    service = { getLatestRun: jest.fn(), startInBackground: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       controllers: [PipelineController],
@@ -33,10 +33,10 @@ describe('PipelineController', () => {
     expect(result).toMatchObject({ id: 1, status: 'success' });
   });
 
-  it('POST /pipeline/run triggers a full pipeline run', async () => {
-    service.runFullPipeline.mockResolvedValue({ id: 2, status: 'success' });
+  it('POST /pipeline/run starts a background run and returns immediately', async () => {
+    service.startInBackground.mockResolvedValue({ id: 2, status: 'running' });
     const result = await controller.trigger();
-    expect(service.runFullPipeline).toHaveBeenCalled();
-    expect(result).toMatchObject({ id: 2, status: 'success' });
+    expect(service.startInBackground).toHaveBeenCalled();
+    expect(result).toMatchObject({ id: 2, status: 'running' });
   });
 });

@@ -93,6 +93,13 @@ export class ClusteringService {
     return result;
   }
 
+  /** Distinct StoryCluster rows for a date - used for pipeline run stats
+   * display (NOT the same as newClusters+joinedExisting from
+   * clusterPendingArticles, which counts articles processed, not clusters). */
+  async countClustersForDate(date: string): Promise<number> {
+    return this.clusterRepository.count({ where: { date } });
+  }
+
   private async loadOpenClusters(
     since: Date,
   ): Promise<Map<number, OpenClusterEntry>> {

@@ -29,6 +29,8 @@ export interface AppConfig {
     clusterSimilarityThreshold: number;
     rankingTopN: number;
     corroborationCap: number;
+    scoringConcurrency: number;
+    summarizationConcurrency: number;
   };
 }
 
@@ -48,7 +50,7 @@ export default (): AppConfig => ({
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
-    model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
+    model: process.env.GEMINI_MODEL ?? 'gemini-flash-lite-latest',
     baseUrl:
       process.env.GEMINI_API_BASE_URL ??
       'https://generativelanguage.googleapis.com/v1beta',
@@ -67,5 +69,10 @@ export default (): AppConfig => ({
     ),
     rankingTopN: parseInt(process.env.RANKING_TOP_N ?? '20', 10),
     corroborationCap: parseInt(process.env.CORROBORATION_CAP ?? '5', 10),
+    scoringConcurrency: parseInt(process.env.SCORING_CONCURRENCY ?? '10', 10),
+    summarizationConcurrency: parseInt(
+      process.env.SUMMARIZATION_CONCURRENCY ?? '5',
+      10,
+    ),
   },
 });

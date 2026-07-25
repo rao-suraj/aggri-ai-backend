@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AppConfig } from '../../config/configuration';
+import { mapWithConcurrency } from '../../common/util/concurrency.util';
 import { ClusterArticle, DailyRanking } from '../../entities';
 import { GroqService } from '../ai/groq.service';
 
@@ -22,6 +25,7 @@ export class SummarizationService {
     @InjectRepository(ClusterArticle)
     private readonly clusterArticleRepository: Repository<ClusterArticle>,
     private readonly groqService: GroqService,
+    private readonly configService: ConfigService<AppConfig, true>,
   ) {}
 
   /**
@@ -39,34 +43,41 @@ export class SummarizationService {
 
     let summarized = 0;
     let failed = 0;
+    const { summarizationConcurrency } = this.configService.get('pipeline', {
+      infer: true,
+    });
 
-    for (const ranking of rankings) {
-      try {
-        const links = await this.clusterArticleRepository.find({
-          where: { clusterId: ranking.clusterId },
-          relations: ['article'],
-          take: MAX_SNIPPETS_FOR_SUMMARY,
-        });
-        const snippets = links.map((l) => l.article.body || l.article.title);
+    await mapWithConcurrency(
+      rankings,
+      summarizationConcurrency,
+      async (ranking) => {
+        try {
+          const links = await this.clusterArticleRepository.find({
+            where: { clusterId: ranking.clusterId },
+            relations: ['article'],
+            take: MAX_SNIPPETS_FOR_SUMMARY,
+          });
+          const snippets = links.map((l) => l.article.body || l.article.title);
 
-        const summary = await this.groqService.summarize({
-          headline: ranking.cluster.primaryHeadline,
-          snippets,
-        });
+          const summary = await this.groqService.summarize({
+            headline: ranking.cluster.primaryHeadline,
+            snippets,
+          });
 
-        await this.rankingRepository.update(ranking.id, {
-          summaryText: summary,
-        });
-        summarized += 1;
-      } catch (error) {
-        failed += 1;
-        this.logger.error(
-          `Summarization failed for ranking ${ranking.id} (cluster ${ranking.clusterId}): ${
-            (error as Error).message
-          }`,
-        );
-      }
-    }
+          await this.rankingRepository.update(ranking.id, {
+            summaryText: summary,
+          });
+          summarized += 1;
+        } catch (error) {
+          failed += 1;
+          this.logger.error(
+            `Summarization failed for ranking ${ranking.id} (cluster ${ranking.clusterId}): ${
+              (error as Error).message
+            }`,
+          );
+        }
+      },
+    );
 
     return { date, summarized, failed };
   }
