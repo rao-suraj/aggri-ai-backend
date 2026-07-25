@@ -1,0 +1,59 @@
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
+import { AppConfig } from '../../config/configuration';
+import { IngestionService } from '../ingestion/ingestion.service';
+import { PipelineService } from './pipeline.service';
+
+/**
+ * Registers the two scheduled jobs described in the implementation plan:
+ * - an hourly ingestion-only job that keeps RawArticle fresh throughout the day
+ * - a once-daily full-pipeline job (clustering -> scoring -> ranking -> summarization)
+ *
+ * Cron expressions are read from config (env-driven) rather than hardcoded
+ * in decorators, so they can differ per environment without a code change.
+ */
+@Injectable()
+export class PipelineScheduler implements OnModuleInit {
+  private readonly logger = new Logger(PipelineScheduler.name);
+
+  constructor(
+    private readonly schedulerRegistry: SchedulerRegistry,
+    private readonly configService: ConfigService<AppConfig, true>,
+    private readonly ingestionService: IngestionService,
+    private readonly pipelineService: PipelineService,
+  ) {}
+
+  onModuleInit(): void {
+    const { ingestionCron, pipelineCron } = this.configService.get('pipeline', {
+      infer: true,
+    });
+
+    const ingestionJob = new CronJob(ingestionCron, () => {
+      this.logger.log('Running scheduled ingestion-only job');
+      this.ingestionService.ingestAll().catch((error) => {
+        this.logger.error(
+          `Scheduled ingestion failed: ${(error as Error).message}`,
+        );
+      });
+    });
+    this.schedulerRegistry.addCronJob('hourly-ingestion', ingestionJob);
+    ingestionJob.start();
+
+    const pipelineJob = new CronJob(pipelineCron, () => {
+      this.logger.log('Running scheduled full pipeline');
+      this.pipelineService.runFullPipeline().catch((error) => {
+        this.logger.error(
+          `Scheduled pipeline run failed: ${(error as Error).message}`,
+        );
+      });
+    });
+    this.schedulerRegistry.addCronJob('daily-pipeline', pipelineJob);
+    pipelineJob.start();
+
+    this.logger.log(
+      `Scheduled jobs registered: ingestion="${ingestionCron}", pipeline="${pipelineCron}"`,
+    );
+  }
+}

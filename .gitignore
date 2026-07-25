@@ -1,0 +1,30 @@
+# compiled output
+/dist
+/node_modules
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# Env files - never commit real secrets. .env.example is the only one tracked.
+.env
+.env.development
+.env.staging
+.env.production
+.env.test
+.env.local
+
+# coverage
+/coverage
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea
+
+# OS
+.DS_Store
