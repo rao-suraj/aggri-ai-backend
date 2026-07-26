@@ -93,11 +93,19 @@ route, not by an in-process ticker:
   ranking -> summarization` flow (`PipelineService.runFullPipeline`, which
   already starts with ingestion) and **awaits it to completion** before
   responding, since a serverless function can't reliably keep running work
-  in the background after it responds. Make sure `vercel.json`'s
-  `functions."src/main.ts".maxDuration` (currently 800s) comfortably covers
-  a real run's duration for your plan (800s requires Pro; Hobby is capped
-  at 300s) - check recent `PipelineRun.startedAt`/`finishedAt` gaps and
-  raise/lower as needed.
+  in the background after it responds.
+
+  Because this app deploys via Vercel's zero-config NestJS support (the
+  whole app becomes a single Vercel Function from `src/main.ts`'s
+  `app.listen()`, not a discrete file under `/api`), `maxDuration` can't be
+  set per-route in `vercel.json`'s `functions` object the way framework
+  route-file conventions do - that key only matches files Vercel treats as
+  individually-buildable function files, which this entry point isn't.
+  Instead, set it under **Project Settings -> Functions -> Function Max
+  Duration** in the Vercel dashboard; it applies to the whole app (Hobby is
+  fixed at 300s; Pro/Enterprise can go up to 800s, or 1800s via the
+  extended-duration beta). Check recent `PipelineRun.startedAt`/`finishedAt`
+  gaps once deployed to see whether the configured duration has headroom.
 - The old in-process scheduler (`src/modules/pipeline/pipeline.scheduler.ts`,
   `@nestjs/schedule`'s `ScheduleModule.forRoot()` in `app.module.ts`, and its
   provider registration in `pipeline.module.ts`) is commented out rather
