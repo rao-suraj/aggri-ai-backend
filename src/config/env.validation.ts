@@ -35,6 +35,11 @@ export const envValidationSchema = Joi.object({
   GROQ_MODEL: Joi.string().default('llama-3.3-70b-versatile'),
   GROQ_API_BASE_URL: Joi.string().default('https://api.groq.com/openai/v1'),
 
+  // Required so CronAuthGuard can verify Vercel Cron requests to
+  // GET /pipeline/cron (Vercel auto-sends this as a Bearer token - see
+  // https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs).
+  CRON_SECRET: Joi.string().required(),
+
   // Pipeline tuning
   INGESTION_CRON: Joi.string().default('0 0 * * * *'),
   PIPELINE_CRON: Joi.string().default('0 0 17 * * *'),

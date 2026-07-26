@@ -8,7 +8,7 @@ import { ScoringModule } from '../scoring/scoring.module';
 import { SourcesModule } from '../sources/sources.module';
 import { SummarizationModule } from '../summarization/summarization.module';
 import { PipelineController } from './pipeline.controller';
-import { PipelineScheduler } from './pipeline.scheduler';
+// import { PipelineScheduler } from './pipeline.scheduler';
 import { PipelineService } from './pipeline.service';
 
 @Module({
@@ -22,7 +22,12 @@ import { PipelineService } from './pipeline.service';
     SourcesModule,
   ],
   controllers: [PipelineController],
-  providers: [PipelineService, PipelineScheduler],
+  // PipelineScheduler is disabled on serverless (see app.module.ts note) -
+  // Vercel Cron calls GET /pipeline/cron on PipelineController instead.
+  // The class/file is kept as-is in case this project moves back to an
+  // always-on host, where it can be re-enabled by uncommenting both here
+  // and in app.module.ts.
+  providers: [PipelineService /*, PipelineScheduler */],
   exports: [PipelineService],
 })
 export class PipelineModule {}

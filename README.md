@@ -78,24 +78,51 @@ migrations for staging/production schema changes.
 
 ## Pipeline
 
-Two scheduled jobs (`src/modules/pipeline/pipeline.scheduler.ts`), both
-cron-expressions driven by config (`INGESTION_CRON`, `PIPELINE_CRON`):
+The app runs as a Vercel serverless function (zero-config NestJS support -
+see `vercel.json`), which does not stay alive between requests. Because of
+that, scheduling is done by **Vercel Cron Jobs** calling a guarded HTTP
+route, not by an in-process ticker:
 
-- **Hourly ingestion-only job** - keeps `raw_articles` fresh throughout the
-  day without re-running the heavier clustering/scoring/ranking stages.
-- **Once-daily full pipeline** - ingestion -> clustering -> scoring ->
-  ranking -> summarization, in order. Recorded as a `PipelineRun` row so the
-  frontend's stats bar can show ingested/clustered/scored/ranked counts,
-  feeds-live ratio, and last-run time without knowing anything about the
-  pipeline internals.
+- `vercel.json`'s `crons` entry calls `GET /pipeline/cron` once a day.
+  That route (`pipeline.controller.ts`) is protected by `CronAuthGuard`,
+  which checks the `Authorization: Bearer <CRON_SECRET>` header Vercel
+  automatically attaches to cron-triggered requests - set `CRON_SECRET` to
+  the same random value in both your `.env` file and the Vercel project's
+  environment variables.
+- That single route runs the full `ingestion -> clustering -> scoring ->
+  ranking -> summarization` flow (`PipelineService.runFullPipeline`, which
+  already starts with ingestion) and **awaits it to completion** before
+  responding, since a serverless function can't reliably keep running work
+  in the background after it responds. Make sure `vercel.json`'s
+  `functions."src/main.ts".maxDuration` (currently 800s) comfortably covers
+  a real run's duration for your plan (800s requires Pro; Hobby is capped
+  at 300s) - check recent `PipelineRun.startedAt`/`finishedAt` gaps and
+  raise/lower as needed.
+- The old in-process scheduler (`src/modules/pipeline/pipeline.scheduler.ts`,
+  `@nestjs/schedule`'s `ScheduleModule.forRoot()` in `app.module.ts`, and its
+  provider registration in `pipeline.module.ts`) is commented out rather
+  than deleted, in case this project ever moves back to an always-on host -
+  it previously ran an hourly ingestion-only job plus this same daily full
+  pipeline job as two separate in-process cron ticks.
 
-You can also trigger a full run manually. This returns immediately (202,
-run status `running`) rather than blocking until the whole pipeline
-finishes - poll `/pipeline/latest` for progress/completion:
+You can also trigger a full run manually (unguarded, for local/ops use).
+This returns immediately (202, run status `running`) rather than blocking
+until the whole pipeline finishes - poll `/pipeline/latest` for
+progress/completion:
 
 ```bash
 curl -X POST http://localhost:3000/pipeline/run
 curl http://localhost:3000/pipeline/latest
+```
+
+Note this manual trigger's fire-and-forget background execution has the
+same "may be killed after the response is sent" risk as any unawaited work
+on a serverless platform - it hasn't been reworked, since it's not on the
+cron path. Prefer `GET /pipeline/cron` (with the `CRON_SECRET` header) if
+you need a manual run that's guaranteed to actually finish:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/pipeline/cron
 ```
 
 Scoring and summarization run with bounded concurrency

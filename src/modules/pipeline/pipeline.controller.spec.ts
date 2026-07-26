@@ -5,10 +5,18 @@ import { PipelineService } from './pipeline.service';
 
 describe('PipelineController', () => {
   let controller: PipelineController;
-  let service: { getLatestRun: jest.Mock; startInBackground: jest.Mock };
+  let service: {
+    getLatestRun: jest.Mock;
+    startInBackground: jest.Mock;
+    runFullPipeline: jest.Mock;
+  };
 
   beforeEach(async () => {
-    service = { getLatestRun: jest.fn(), startInBackground: jest.fn() };
+    service = {
+      getLatestRun: jest.fn(),
+      startInBackground: jest.fn(),
+      runFullPipeline: jest.fn(),
+    };
 
     const moduleRef = await Test.createTestingModule({
       controllers: [PipelineController],
@@ -38,5 +46,12 @@ describe('PipelineController', () => {
     const result = await controller.trigger();
     expect(service.startInBackground).toHaveBeenCalled();
     expect(result).toMatchObject({ id: 2, status: 'running' });
+  });
+
+  it('GET /pipeline/cron awaits the full run and returns its final status', async () => {
+    service.runFullPipeline.mockResolvedValue({ id: 3, status: 'success' });
+    const result = await controller.cron();
+    expect(service.runFullPipeline).toHaveBeenCalled();
+    expect(result).toMatchObject({ id: 3, status: 'success' });
   });
 });

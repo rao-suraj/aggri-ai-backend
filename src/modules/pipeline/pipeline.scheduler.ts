@@ -7,6 +7,17 @@ import { IngestionService } from '../ingestion/ingestion.service';
 import { PipelineService } from './pipeline.service';
 
 /**
+ * NOT CURRENTLY WIRED UP - the app runs as a Vercel serverless function,
+ * which doesn't keep a process alive between requests, so this in-process
+ * CronJob ticker never fires reliably in that environment. It is commented
+ * out of the DI graph in pipeline.module.ts and app.module.ts
+ * (ScheduleModule.forRoot() is disabled there too). Scheduling is instead
+ * done via Vercel Cron Jobs (see /vercel.json) hitting the guarded
+ * GET /pipeline/cron route on PipelineController.
+ *
+ * Kept here, uninstantiated, in case this project is ever deployed to an
+ * always-on host again - re-enable by uncommenting the two spots above.
+ *
  * Registers the two scheduled jobs described in the implementation plan:
  * - an hourly ingestion-only job that keeps RawArticle fresh throughout the day
  * - a once-daily full-pipeline job (clustering -> scoring -> ranking -> summarization)

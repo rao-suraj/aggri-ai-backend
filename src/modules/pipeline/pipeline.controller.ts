@@ -4,8 +4,10 @@ import {
   HttpCode,
   NotFoundException,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { CronAuthGuard } from '../../common/guards/cron-auth.guard';
 import { PipelineRunResponseDto } from './dto/pipeline-run-response.dto';
 import { PipelineService } from './pipeline.service';
 
@@ -35,6 +37,29 @@ export class PipelineController {
   @HttpCode(202)
   async trigger(): Promise<PipelineRunResponseDto> {
     const run = await this.pipelineService.startInBackground();
+    return plainToInstance(PipelineRunResponseDto, run, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  /**
+   * Called on a schedule by Vercel Cron (see /vercel.json `crons`), which
+   * always invokes cron routes with GET. Guarded by CronAuthGuard so only
+   * requests carrying the `CRON_SECRET` Vercel attaches automatically can
+   * trigger it - see cron-auth.guard.ts.
+   *
+   * Unlike POST /pipeline/run, this awaits the full run rather than firing
+   * it in the background: on a serverless platform there is no guarantee
+   * an unawaited promise survives past the response, so the function must
+   * stay alive (bounded by vercel.json's `maxDuration`) until the pipeline
+   * actually finishes. runFullPipeline() already runs ingestion first
+   * (see pipeline.service.ts), so this single route replaces both the old
+   * hourly ingestion-only cron and the daily full-pipeline cron.
+   */
+  @Get('cron')
+  @UseGuards(CronAuthGuard)
+  async cron(): Promise<PipelineRunResponseDto> {
+    const run = await this.pipelineService.runFullPipeline();
     return plainToInstance(PipelineRunResponseDto, run, {
       excludeExtraneousValues: true,
     });
