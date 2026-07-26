@@ -19,16 +19,15 @@ config(); // fallback to .env if present
  * The running application itself gets its connection via DatabaseModule.
  */
 export const AppDataSource = new DataSource({
-  type: 'mssql',
+  type: 'mysql',
   host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT ?? '1433', 10),
+  port: parseInt(process.env.DB_PORT ?? '3306', 10),
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  options: {
-    encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
-  },
+  charset: 'utf8mb4',
+  ssl:
+    process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   entities: [
     Source,
     RawArticle,

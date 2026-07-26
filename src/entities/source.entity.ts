@@ -18,13 +18,13 @@ export class Source {
   name: string;
 
   @Index({ unique: true })
-  @Column({ name: 'rss_url', type: 'varchar', length: 1000 })
+  @Column({ name: 'rss_url', type: 'varchar', length: 500 })
   rssUrl: string;
 
   @Column({ type: 'varchar', length: 20 })
   tier: SourceTier;
 
-  @Column({ type: 'bit', default: true })
+  @Column({ type: 'boolean', default: true })
   active: boolean;
 
   @Column({
@@ -35,10 +35,10 @@ export class Source {
   })
   lastFetchStatus: 'ok' | 'error' | null;
 
-  @Column({ name: 'last_fetched_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'last_fetched_at', type: 'datetime', nullable: true })
   lastFetchedAt: Date | null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'datetime2' })
+  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date;
 
   @OneToMany(() => RawArticle, (article) => article.source)

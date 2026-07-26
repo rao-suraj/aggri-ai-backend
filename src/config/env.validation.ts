@@ -13,14 +13,13 @@ export const envValidationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().default(3000),
 
-  // Database (SQL Server)
+  // Database (MySQL)
   DB_HOST: Joi.string().required(),
-  DB_PORT: Joi.number().default(1433),
+  DB_PORT: Joi.number().default(3306),
   DB_USERNAME: Joi.string().required(),
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().required(),
-  DB_ENCRYPT: Joi.boolean().default(false),
-  DB_TRUST_SERVER_CERTIFICATE: Joi.boolean().default(true),
+  DB_SSL: Joi.boolean().default(false),
   DB_SYNCHRONIZE: Joi.boolean().default(false),
   DB_LOGGING: Joi.boolean().default(false),
 

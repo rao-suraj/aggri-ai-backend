@@ -7,8 +7,7 @@ export interface AppConfig {
     username: string;
     password: string;
     database: string;
-    encrypt: boolean;
-    trustServerCertificate: boolean;
+    ssl: boolean;
     synchronize: boolean;
     logging: boolean;
   };
@@ -39,12 +38,11 @@ export default (): AppConfig => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
   db: {
     host: process.env.DB_HOST ?? '',
-    port: parseInt(process.env.DB_PORT ?? '1433', 10),
+    port: parseInt(process.env.DB_PORT ?? '3306', 10),
     username: process.env.DB_USERNAME ?? '',
     password: process.env.DB_PASSWORD ?? '',
     database: process.env.DB_NAME ?? '',
-    encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
+    ssl: process.env.DB_SSL === 'true',
     synchronize: process.env.DB_SYNCHRONIZE === 'true',
     logging: process.env.DB_LOGGING === 'true',
   },

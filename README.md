@@ -1,6 +1,6 @@
 # Aggri-AI Backend
 
-NestJS + TypeORM (SQL Server) backend implementing the Aggri-AI MVP pipeline:
+NestJS + TypeORM (MySQL) backend implementing the Aggri-AI MVP pipeline:
 
 ```
 [Scheduler] -> [Ingestion] -> [Clustering] -> [Scoring] -> [Ranking] -> [Summarization] -> [Database] -> [API]
@@ -15,8 +15,8 @@ was built against.
 
 ## Stack
 
-- NestJS 11 + TypeORM 0.3 (`mssql` driver)
-- SQL Server (via Docker for local dev)
+- NestJS 11 + TypeORM 0.3 (`mysql2` driver)
+- MySQL (via Docker for local dev)
 - Gemini (`gemini-flash-latest` alias, currently resolves to `gemini-3.6-flash`)
   - Phase 3 AI sanity-check (sensationalism / missing attribution /
     contradiction flags)
@@ -29,7 +29,7 @@ was built against.
 ## Requirements
 
 - Node.js 20+
-- Docker (for local SQL Server) - or your own reachable SQL Server instance
+- Docker (for local MySQL) - or your own reachable MySQL instance
 - A Gemini API key and a Groq API key (both have generous free tiers - see
   the PRD). **The app fails fast at startup if either is missing** - there is
   intentionally no mock/fallback mode.
@@ -39,7 +39,7 @@ was built against.
 ```bash
 npm install
 
-# 1. Start SQL Server locally
+# 1. Start MySQL locally
 docker compose up -d
 
 # 2. Copy env template and fill in your API keys
@@ -47,7 +47,7 @@ cp .env.example .env.development
 # edit .env.development: set GEMINI_API_KEY and GROQ_API_KEY at minimum.
 # DB_* defaults already match docker-compose.yml.
 
-# 3. Create the database (SQL Server needs this done once, unlike Postgres/MySQL)
+# 3. Create the database (needs to be done once - safe to re-run)
 npm run db:create
 
 # 4. Run migrations
@@ -230,7 +230,7 @@ verify the pipeline degrades gracefully rather than aborting entirely.
 
 e2e tests boot the real Nest HTTP stack (routing, global `ValidationPipe`,
 DTO serialization) with TypeORM repositories swapped for in-memory fakes via
-`overrideProvider`, so they run anywhere without SQL Server installed. For a
+`overrideProvider`, so they run anywhere without MySQL installed. For a
 true DB-integration run: `docker compose up -d`, run migrations against
 `.env.test`, then point a full-`AppModule` e2e suite at it (not included by
 default to keep `npm run test:e2e` infra-free for CI).
@@ -240,7 +240,7 @@ default to keep `npm run test:e2e` infra-free for CI).
 Written by hand in `src/database/migrations/` (kept in sync with
 `src/entities/`) rather than auto-generated, since `migration:generate`
 needs a live DB connection to diff against and this repo should be usable
-before anyone has SQL Server running.
+before anyone has MySQL running.
 
 ```bash
 npm run migration:run       # apply

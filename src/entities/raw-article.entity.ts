@@ -22,19 +22,19 @@ export class RawArticle {
   @Column({ name: 'source_id' })
   sourceId: number;
 
-  @Column({ type: 'nvarchar', length: 1000 })
+  @Column({ type: 'varchar', length: 1000 })
   title: string;
 
-  @Column({ type: 'nvarchar', length: 'max', nullable: true })
+  @Column({ type: 'text', nullable: true })
   body: string | null;
 
   @Column({ type: 'varchar', length: 2000 })
   url: string;
 
-  @Column({ name: 'published_at', type: 'datetime2' })
+  @Column({ name: 'published_at', type: 'datetime' })
   publishedAt: Date;
 
-  @CreateDateColumn({ name: 'fetched_at', type: 'datetime2' })
+  @CreateDateColumn({ name: 'fetched_at', type: 'datetime' })
   fetchedAt: Date;
 
   @Column({ name: 'content_hash', type: 'varchar', length: 64 })

@@ -28,9 +28,9 @@ export class DailyRanking {
   @Column({ type: 'int' })
   rank: number;
 
-  @Column({ name: 'summary_text', type: 'nvarchar', length: 'max' })
+  @Column({ name: 'summary_text', type: 'text' })
   summaryText: string;
 
-  @CreateDateColumn({ name: 'created_at', type: 'datetime2' })
+  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date;
 }

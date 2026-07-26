@@ -21,10 +21,10 @@ export class PipelineRun {
   @Column({ type: 'date' })
   date: string;
 
-  @Column({ name: 'started_at', type: 'datetime2' })
+  @Column({ name: 'started_at', type: 'datetime' })
   startedAt: Date;
 
-  @Column({ name: 'finished_at', type: 'datetime2', nullable: true })
+  @Column({ name: 'finished_at', type: 'datetime', nullable: true })
   finishedAt: Date | null;
 
   @Column({ type: 'varchar', length: 20, default: 'running' })
@@ -56,12 +56,11 @@ export class PipelineRun {
 
   @Column({
     name: 'error_message',
-    type: 'nvarchar',
-    length: 'max',
+    type: 'text',
     nullable: true,
   })
   errorMessage: string | null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'datetime2' })
+  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date;
 }

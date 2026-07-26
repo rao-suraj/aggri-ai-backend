@@ -26,7 +26,7 @@ export class StoryCluster {
   @Column({ type: 'date' })
   date: string;
 
-  @Column({ name: 'primary_headline', type: 'nvarchar', length: 1000 })
+  @Column({ name: 'primary_headline', type: 'varchar', length: 1000 })
   primaryHeadline: string;
 
   @Column({ name: 'topic', type: 'varchar', length: 40, default: 'GENERAL' })
@@ -51,7 +51,7 @@ export class StoryCluster {
   @Column({ name: 'ai_flag_score', type: 'float', default: 0 })
   aiFlagScore: number;
 
-  @Column({ name: 'ai_flags', type: 'nvarchar', length: 'max', nullable: true })
+  @Column({ name: 'ai_flags', type: 'text', nullable: true })
   aiFlagsRaw: string | null;
 
   @Column({ name: 'final_score', type: 'float', default: 0 })
@@ -60,7 +60,7 @@ export class StoryCluster {
   @Column({ name: 'highest_tier', type: 'varchar', length: 20, nullable: true })
   highestTier: string | null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'datetime2' })
+  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date;
 
   @OneToMany(() => ClusterArticle, (ca) => ca.cluster)

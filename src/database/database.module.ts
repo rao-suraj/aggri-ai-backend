@@ -19,7 +19,7 @@ import {
       useFactory: (configService: ConfigService<AppConfig, true>) => {
         const db = configService.get('db', { infer: true });
         return {
-          type: 'mssql',
+          type: 'mysql',
           host: db.host,
           port: db.port,
           username: db.username,
@@ -27,6 +27,8 @@ import {
           database: db.database,
           synchronize: db.synchronize,
           logging: db.logging,
+          charset: 'utf8mb4',
+          ssl: db.ssl ? { rejectUnauthorized: false } : undefined,
           entities: [
             Source,
             RawArticle,
@@ -35,10 +37,6 @@ import {
             DailyRanking,
             PipelineRun,
           ],
-          options: {
-            encrypt: db.encrypt,
-            trustServerCertificate: db.trustServerCertificate,
-          },
         };
       },
     }),
