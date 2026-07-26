@@ -21,7 +21,9 @@ was built against.
   - Phase 3 AI sanity-check (sensationalism / missing attribution /
     contradiction flags)
 - Groq (Llama 3.3 70B) - Phase 4 summarization
-- `@nestjs/schedule` for cron jobs (no separate queue infra)
+- Vercel Cron Jobs for scheduling (see Pipeline section below) - the
+  `@nestjs/schedule`/`cron` in-process alternative is left in the codebase,
+  commented out, but unused while deployed on Vercel
 - `rss-parser` for feed ingestion, `stopword` for keyword extraction
 
 ## Requirements
@@ -75,6 +77,27 @@ required for unit tests (which mock all dependencies and never boot
 
 Never set `DB_SYNCHRONIZE=true` outside of local development - use
 migrations for staging/production schema changes.
+
+## Deployment (Vercel)
+
+`src/main.ts` (with `app.listen()`) is only used for local dev
+(`npm run start:dev` / `start:prod`) - it is **not** what Vercel runs.
+
+Vercel's zero-config NestJS detection (auto-bundling the whole app from
+`src/main.ts`'s `app.listen()`) turned out unreliable for this project: it
+first failed to build (`functions` pattern couldn't match `src/main.ts`
+outside the `api/` convention) and, once that was removed, built fine but
+crashed at runtime on every request (`No exports found in module
+.../src/main.js` -> process exits). Rather than fight that, deployment
+uses the older, well-established pattern instead: `api/index.ts` bootstraps
+Nest onto an Express instance once, caches it across warm invocations, and
+forwards every request into it via a plain exported handler function - a
+standard Vercel Node.js Function, not dependent on any `app.listen()`
+auto-detection. `vercel.json`'s `rewrites` sends all paths to it.
+
+If you ever revisit the zero-config path (e.g. after a Vercel platform
+fix), `src/main.ts` needs no changes to go back to it - just remove
+`api/index.ts` and `vercel.json`'s `rewrites` entry.
 
 ## Pipeline
 
